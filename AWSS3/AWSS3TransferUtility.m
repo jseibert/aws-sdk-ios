@@ -644,9 +644,9 @@ static AWSS3TransferUtility *_defaultS3TransferUtility = nil;
     return transferUtilityDownloadTask;
 }
 
-#pragma mark - UIApplicationDelegate interceptor
+#pragma mark - NSApplicationDelegate interceptor
 
-+ (void)interceptApplication:(UIApplication *)application
++ (void)interceptApplication:(NSApplication *)application
 handleEventsForBackgroundURLSession:(NSString *)identifier
            completionHandler:(void (^)())completionHandler {
     // For the default service client

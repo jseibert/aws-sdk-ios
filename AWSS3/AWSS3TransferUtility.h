@@ -13,7 +13,7 @@
 // permissions and limitations under the License.
 //
 
-#import <UIKit/UIKit.h>
+//#import <UIKit/UIKit.h>
 #import <AWSCore/AWSCore.h>
 
 NS_ASSUME_NONNULL_BEGIN
@@ -262,7 +262,7 @@ typedef void (^AWSS3TransferUtilityProgressBlock) (AWSS3TransferUtilityTask *tas
  @param identifier        The identifier of the URL session requiring attention.
  @param completionHandler The completion handler to call when you finish processing the events.
  */
-+ (void)interceptApplication:(UIApplication *)application
++ (void)interceptApplication:(NSApplication *)application
 handleEventsForBackgroundURLSession:(NSString *)identifier
            completionHandler:(void (^)())completionHandler;
 
