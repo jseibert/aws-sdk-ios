@@ -16,7 +16,7 @@
 import XCTest
 import AWSS3
 
-var testData = NSData()
+var testData = Data()
 
 class AWSS3TransferUtilityTests: XCTestCase {
 
@@ -26,15 +26,15 @@ class AWSS3TransferUtilityTests: XCTestCase {
         AWSTestUtility.setupCognitoCredentialsProvider()
 
         let serviceConfiguration = AWSServiceConfiguration(
-            region: .EUWest1,
-            credentialsProvider: AWSServiceManager.defaultServiceManager().defaultServiceConfiguration.credentialsProvider
+            region: .euWest1,
+            credentialsProvider: AWSServiceManager.default().defaultServiceConfiguration.credentialsProvider
         )
 
         let transferUtilityConfiguration = AWSS3TransferUtilityConfiguration()
-        transferUtilityConfiguration.accelerateModeEnabled = true
+        transferUtilityConfiguration.isAccelerateModeEnabled = true
 
-        AWSS3TransferUtility.registerS3TransferUtilityWithConfiguration(
-            serviceConfiguration,
+        AWSS3TransferUtility.register(
+            with: serviceConfiguration!,
             transferUtilityConfiguration: transferUtilityConfiguration,
             forKey: "transfer-acceleration"
         )
@@ -43,7 +43,7 @@ class AWSS3TransferUtilityTests: XCTestCase {
         for _ in 1...5 {
             dataString += dataString
         }
-        testData = dataString.dataUsingEncoding(NSUTF8StringEncoding)!
+        testData = dataString.data(using: String.Encoding.utf8)!
     }
 
     override func setUp() {
@@ -55,13 +55,13 @@ class AWSS3TransferUtilityTests: XCTestCase {
     }
 
     func testUploadAndDownloadData() {
-        let expectation = expectationWithDescription("The completion handler called.")
+        let expectation = self.expectation(description: "The completion handler called.")
 
         // the test key is 1234567890123456
         let password = "MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI="
         let passwordMD5 = "dnF5x6K/8ZZRzpfSlMMM+w=="
 
-        let transferUtility = AWSS3TransferUtility.defaultS3TransferUtility()
+        let transferUtility = AWSS3TransferUtility.default()
         let uploadExpression = AWSS3TransferUtilityUploadExpression()
         uploadExpression.setValue("AES256", forRequestHeader: "x-amz-server-side-encryption-customer-algorithm")
         uploadExpression.setValue(password, forRequestHeader: "x-amz-server-side-encryption-customer-key")
@@ -77,7 +77,7 @@ class AWSS3TransferUtilityTests: XCTestCase {
                 downloadExpression.setValue(password, forRequestHeader: "x-amz-server-side-encryption-customer-key")
                 downloadExpression.setValue(passwordMD5, forRequestHeader: "x-amz-server-side-encryption-customer-key-MD5")
 
-                let downloadCompletionHandler = { (task: AWSS3TransferUtilityDownloadTask, URL: NSURL?, data: NSData?, error: NSError?) in
+                let downloadCompletionHandler = { (task: AWSS3TransferUtilityDownloadTask, URL: Foundation.URL?, data: Data?, error: NSError?) in
                     if let HTTPResponse = task.response {
                         XCTAssertEqual(HTTPResponse.statusCode, 200)
                         XCTAssertEqual(data, testData)
@@ -89,11 +89,11 @@ class AWSS3TransferUtilityTests: XCTestCase {
                     expectation.fulfill()
                 }
 
-                transferUtility.downloadDataFromBucket(
-                    "ios-v2-s3.periods",
+                transferUtility.downloadData(
+                    fromBucket: "ios-v2-s3.periods",
                     key: "test-swift-upload",
                     expression: downloadExpression,
-                    completionHander: downloadCompletionHandler).continueWithBlock({ (task) -> AnyObject? in
+                    completionHander: downloadCompletionHandler).continue({ (task) -> AnyObject? in
                         XCTAssertNil(task.error)
                         return nil
                     })
@@ -109,24 +109,24 @@ class AWSS3TransferUtilityTests: XCTestCase {
             contentType: "text/plain",
             expression: uploadExpression,
             completionHander: uploadCompletionHandler
-            ).continueWithBlock { (task) -> AnyObject? in
+            ).continue { (task) -> AnyObject? in
                 XCTAssertNil(task.error)
 
                 return nil
         }
 
-        waitForExpectationsWithTimeout(30) { (error) in
+        waitForExpectations(timeout: 30) { (error) in
             XCTAssertNil(error)
         }
     }
 
     func testUploadFailure() {
-        let expectation = expectationWithDescription("The completion handler called.")
+        let expectation = self.expectation(description: "The completion handler called.")
 
         let password = "InvalidPassword"
         let passwordMD5 = "InvalidPasswordMD5"
 
-        let transferUtility = AWSS3TransferUtility.defaultS3TransferUtility()
+        let transferUtility = AWSS3TransferUtility.default()
         let uploadExpression = AWSS3TransferUtilityUploadExpression()
         uploadExpression.setValue("AES256", forRequestHeader: "x-amz-server-side-encryption-customer-algorithm")
         uploadExpression.setValue(password, forRequestHeader: "x-amz-server-side-encryption-customer-key")
@@ -135,7 +135,7 @@ class AWSS3TransferUtilityTests: XCTestCase {
         let uploadCompletionHandler = { (task: AWSS3TransferUtilityUploadTask, error: NSError?) -> Void in
             XCTAssertNotNil(error)
             XCTAssertEqual(error?.domain, AWSS3TransferUtilityErrorDomain)
-            XCTAssertEqual(error?.code, AWSS3TransferUtilityErrorType.ClientError.rawValue)
+            XCTAssertEqual(error?.code, AWSS3TransferUtilityErrorType.clientError.rawValue)
 
             if let HTTPResponse = task.response {
                 XCTAssertEqual(HTTPResponse.statusCode, 400)
@@ -153,21 +153,21 @@ class AWSS3TransferUtilityTests: XCTestCase {
             contentType: "application/octet-stream",
             expression: uploadExpression,
             completionHander: uploadCompletionHandler
-            ).continueWithBlock { (task) -> AnyObject? in
+            ).continue { (task) -> AnyObject? in
                 XCTAssertNil(task.error)
 
                 return nil
         }
         
-        waitForExpectationsWithTimeout(30) { (error) in
+        waitForExpectations(timeout: 30) { (error) in
             XCTAssertNil(error)
         }
     }
 
     func testTransferAcceleration() {
-        let expectation = expectationWithDescription("The completion handler called.")
+        let expectation = self.expectation(description: "The completion handler called.")
 
-        let transferUtility = AWSS3TransferUtility.S3TransferUtilityForKey("transfer-acceleration")
+        let transferUtility = AWSS3TransferUtility.s3TransferUtility(forKey: "transfer-acceleration")
         let uploadExpression = AWSS3TransferUtilityUploadExpression()
 
         let uploadCompletionHandler = { (task: AWSS3TransferUtilityUploadTask, error: NSError?) -> Void in
@@ -177,7 +177,7 @@ class AWSS3TransferUtilityTests: XCTestCase {
 
                 let downloadExpression = AWSS3TransferUtilityDownloadExpression()
 
-                let downloadCompletionHandler = { (task: AWSS3TransferUtilityDownloadTask, URL: NSURL?, data: NSData?, error: NSError?) in
+                let downloadCompletionHandler = { (task: AWSS3TransferUtilityDownloadTask, URL: Foundation.URL?, data: Data?, error: NSError?) in
                     if let HTTPResponse = task.response {
                         XCTAssertEqual(HTTPResponse.statusCode, 200)
                         XCTAssertEqual(data, testData)
@@ -188,11 +188,11 @@ class AWSS3TransferUtilityTests: XCTestCase {
                     expectation.fulfill()
                 }
 
-                transferUtility.downloadDataFromBucket(
-                    "ios-v2-s3-transfer-acceleration",
+                transferUtility.downloadData(
+                    fromBucket: "ios-v2-s3-transfer-acceleration",
                     key: "test-swift-upload",
                     expression: downloadExpression,
-                    completionHander: downloadCompletionHandler).continueWithBlock({ (task) -> AnyObject? in
+                    completionHander: downloadCompletionHandler).continue({ (task) -> AnyObject? in
                         XCTAssertNil(task.error)
                         return nil
                     })
@@ -208,21 +208,21 @@ class AWSS3TransferUtilityTests: XCTestCase {
             contentType: "application/octet-stream",
             expression: uploadExpression,
             completionHander: uploadCompletionHandler
-            ).continueWithBlock { (task) -> AnyObject? in
+            ).continue { (task) -> AnyObject? in
                 XCTAssertNil(task.error)
 
                 return nil
         }
 
-        waitForExpectationsWithTimeout(30) { (error) in
+        waitForExpectations(timeout: 30) { (error) in
             XCTAssertNil(error)
         }
     }
 
     func testInvalidBucketNameForTransferAcceleration() {
-        let expectation = expectationWithDescription("The completion handler called.")
+        let expectation = self.expectation(description: "The completion handler called.")
 
-        let transferUtility = AWSS3TransferUtility.S3TransferUtilityForKey("transfer-acceleration")
+        let transferUtility = AWSS3TransferUtility.s3TransferUtility(forKey: "transfer-acceleration")
 
         transferUtility.uploadData(
             testData,
@@ -231,25 +231,25 @@ class AWSS3TransferUtilityTests: XCTestCase {
             contentType: "application/octet-stream",
             expression: nil,
             completionHander: nil
-            ).continueWithBlock { (task) -> AnyObject? in
+            ).continue { (task) -> AnyObject? in
                 XCTAssertNotNil(task.error)
                 XCTAssertEqual(task.error?.domain, AWSS3PresignedURLErrorDomain)
-                XCTAssertEqual(task.error?.code, AWSS3PresignedURLErrorType.PresignedURLErrorInvalidBucketNameForAccelerateModeEnabled.rawValue)
+                XCTAssertEqual(task.error?.code, AWSS3PresignedURLErrorType.presignedURLErrorInvalidBucketNameForAccelerateModeEnabled.rawValue)
                 
                 expectation.fulfill()
                 
                 return nil
         }
         
-        waitForExpectationsWithTimeout(30) { (error) in
+        waitForExpectations(timeout: 30) { (error) in
             XCTAssertNil(error)
         }
     }
 
     func testEmptyBucketNameForTransferAccelerationUpload() {
-        let expectation = expectationWithDescription("The completion handler called.")
+        let expectation = self.expectation(description: "The completion handler called.")
 
-        let transferUtility = AWSS3TransferUtility.S3TransferUtilityForKey("transfer-acceleration")
+        let transferUtility = AWSS3TransferUtility.s3TransferUtility(forKey: "transfer-acceleration")
 
         transferUtility.uploadData(
             testData,
@@ -258,42 +258,42 @@ class AWSS3TransferUtilityTests: XCTestCase {
             contentType: "application/octet-stream",
             expression: nil,
             completionHander: nil
-            ).continueWithBlock { (task) -> AnyObject? in
+            ).continue { (task) -> AnyObject? in
                 XCTAssertNotNil(task.error)
                 XCTAssertEqual(task.error?.domain, AWSS3PresignedURLErrorDomain)
-                XCTAssertEqual(task.error?.code, AWSS3PresignedURLErrorType.PresignedURLErrorInvalidBucketNameForAccelerateModeEnabled.rawValue)
+                XCTAssertEqual(task.error?.code, AWSS3PresignedURLErrorType.presignedURLErrorInvalidBucketNameForAccelerateModeEnabled.rawValue)
 
                 expectation.fulfill()
 
                 return nil
         }
 
-        waitForExpectationsWithTimeout(30) { (error) in
+        waitForExpectations(timeout: 30) { (error) in
             XCTAssertNil(error)
         }
     }
 
     func testEmptyBucketNameForTransferAccelerationDownload() {
-        let expectation = expectationWithDescription("The completion handler called.")
+        let expectation = self.expectation(description: "The completion handler called.")
 
-        let transferUtility = AWSS3TransferUtility.S3TransferUtilityForKey("transfer-acceleration")
+        let transferUtility = AWSS3TransferUtility.s3TransferUtility(forKey: "transfer-acceleration")
 
-        transferUtility.downloadToURL(NSURL(string: "foo.bar")!,
+        transferUtility.download(to: URL(string: "foo.bar")!,
             bucket: "",
             key: "test-swift-upload",
             expression: nil,
             completionHander: nil
-            ).continueWithBlock { (task) -> AnyObject? in
+            ).continue { (task) -> AnyObject? in
                 XCTAssertNotNil(task.error)
                 XCTAssertEqual(task.error?.domain, AWSS3PresignedURLErrorDomain)
-                XCTAssertEqual(task.error?.code, AWSS3PresignedURLErrorType.PresignedURLErrorBucketNameIsNil.rawValue)
+                XCTAssertEqual(task.error?.code, AWSS3PresignedURLErrorType.presignedURLErrorBucketNameIsNil.rawValue)
 
                 expectation.fulfill()
 
                 return nil
         }
 
-        waitForExpectationsWithTimeout(30) { (error) in
+        waitForExpectations(timeout: 30) { (error) in
             XCTAssertNil(error)
         }
     }
